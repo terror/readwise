@@ -1,0 +1,11 @@
+[package]
+name = "readwise"
+version = "0.0.0"
+authors = ["Liam liam@scalzulli.com"]
+edition = "2018"
+description = "A readwise API wrapper."
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
