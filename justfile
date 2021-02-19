@@ -1,7 +1,7 @@
 build:
     cargo build
 
-test args:
+test *args:
     cargo test --{{args}}
 
 fmt:
