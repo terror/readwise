@@ -1,6 +1,8 @@
 /// ! Rust wrapper for the Readwise public API. The official readwise public API
 /// ! documentation can be found [here](https://readwise.io/api_deets).
+/// This wrapper supports retrieving Book information and CRUD for Highlights.
 use anyhow::{anyhow, Result};
+use http::Method;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -9,7 +11,7 @@ use serde_json;
 use mockito;
 
 #[cfg(not(test))]
-const URL: &str = "https://www.readwise.io";
+const URL: &str = "https://readwise.io";
 
 /// The authenticated client instance. The access_token can be
 /// obtained through Readwise.
@@ -36,31 +38,31 @@ pub struct HighlightsResponse {
 /// An individual book
 #[derive(Serialize, Deserialize, Default)]
 pub struct Book {
-  id:                  i64,
-  title:               String,
-  author:              String,
-  category:            String,
-  num_highlights:      i64,
-  last_highlighted_at: Option<String>,
-  updated:             String,
-  cover_image_url:     String,
-  highlights_url:      String,
-  source_url:          Option<String>,
+  pub id:                  i64,
+  pub title:               String,
+  pub author:              String,
+  pub category:            String,
+  pub num_highlights:      i64,
+  pub last_highlighted_at: Option<String>,
+  pub updated:             String,
+  pub cover_image_url:     String,
+  pub highlights_url:      String,
+  pub source_url:          Option<String>,
 }
 
 /// An individual highlight
 #[derive(Serialize, Deserialize, Default)]
 pub struct Highlight {
-  id:             i64,
-  text:           String,
-  note:           String,
-  location:       i64,
-  location_type:  String,
-  highlighted_at: Option<String>,
-  url:            Option<String>,
-  color:          String,
-  updated:        String,
-  books_id:       i64,
+  pub id:             i64,
+  pub text:           String,
+  pub note:           String,
+  pub location:       i64,
+  pub location_type:  String,
+  pub highlighted_at: Option<String>,
+  pub url:            Option<String>,
+  pub color:          String,
+  pub updated:        String,
+  pub books_id:       Option<String>,
 }
 
 fn get_request_url() -> String {
@@ -71,71 +73,71 @@ fn get_request_url() -> String {
   url
 }
 
-fn get_next(n: String) -> String {
-  let v: Vec<&str> = n.split("/").collect();
-  v[v.len() - 1].to_string()
-}
-
 impl Client {
-  /// Fetch all books
-  pub fn books(&self) -> Result<Vec<Book>> {
+  /// Fetch all books from a specified page
+  /// Builds and returns a Vec of Book structs
+  pub fn books(&self, page: i64) -> Result<Vec<Book>> {
     let mut ret: Vec<Book> = Vec::new();
-    let mut next = String::from("/books");
 
-    loop {
-      let resp = signed_request(&format!("{}", next), &self.access_token)?;
+    let resp = signed_request(
+      &format!("/books?page={}", page),
+      &self.access_token,
+      Method::GET,
+      None,
+    )?;
 
-      if resp.status().is_success() {
-        let response_text = &resp.text()?;
-        let data: BooksResponse = serde_json::from_str(&response_text)?;
+    if resp.status().is_success() {
+      let response_text = &resp.text()?;
+      let data: BooksResponse = serde_json::from_str(&response_text)?;
 
-        for book in data.results {
-          ret.push(book);
-        }
-
-        if let Some(n) = data.next {
-          next = get_next(n)
-        } else {
-          break;
-        }
-      } else {
-        Err(anyhow!("Failed to fetch books with status code: {}.", resp.status()))?
+      for book in data.results {
+        ret.push(book);
       }
+    } else {
+      Err(anyhow!(
+        "Failed to fetch books with status code: {}.",
+        resp.status()
+      ))?
     }
     Ok(ret)
   }
 
-  /// Fetch all highlights
-  pub fn highlights(&self) -> Result<Vec<Highlight>> {
+  /// Fetch all highlights from a specified page
+  /// Builds and returns a Vec of Highlight structs
+  pub fn highlights(&self, page: i64) -> Result<Vec<Highlight>> {
     let mut ret: Vec<Highlight> = Vec::new();
-    let mut next = String::from("/highlights");
 
-    loop {
-      let resp = signed_request(&format!("{}", next), &self.access_token)?;
+    let resp = signed_request(
+      &format!("/highlights?page={}", page),
+      &self.access_token,
+      Method::GET,
+      None,
+    )?;
 
-      if resp.status().is_success() {
-        let response_text = &resp.text()?;
-        let data: HighlightsResponse = serde_json::from_str(&response_text)?;
+    if resp.status().is_success() {
+      let response_text = &resp.text()?;
+      let data: HighlightsResponse = serde_json::from_str(&response_text)?;
 
-        for highlight in data.results {
-          ret.push(highlight);
-        }
-
-        if let Some(n) = data.next {
-          next = get_next(n);
-        } else {
-          break;
-        }
-      } else {
-        Err(anyhow!("Failed to fetch highlights with status code: {}.", resp.status()))?
+      for highlight in data.results {
+        ret.push(highlight);
       }
+    } else {
+      Err(anyhow!(
+        "Failed to fetch highlights with status code: {}.",
+        resp.status()
+      ))?
     }
     Ok(ret)
   }
 
   /// Fetch a single book by ID
   pub fn book(&self, id: i64) -> Result<Book> {
-    let resp = signed_request(&format!("/books/{}", id), &self.access_token)?;
+    let resp = signed_request(
+      &format!("/books/{}", id),
+      &self.access_token,
+      Method::GET,
+      None,
+    )?;
     if resp.status().is_success() {
       let response_text = resp.text()?;
       let data: Book = serde_json::from_str(&response_text)?;
@@ -147,7 +149,12 @@ impl Client {
 
   /// Fetch a single highlight by ID
   pub fn highlight(&self, id: i64) -> Result<Highlight> {
-    let resp = signed_request(&format!("/highlights/{}", id), &self.access_token)?;
+    let resp = signed_request(
+      &format!("/highlights/{}", id),
+      &self.access_token,
+      Method::GET,
+      None,
+    )?;
     if resp.status().is_success() {
       let response_text = resp.text()?;
       let data: Highlight = serde_json::from_str(&response_text)?;
@@ -156,29 +163,66 @@ impl Client {
       Err(anyhow!("Failed to fetch highlight with id: {}", id))
     }
   }
+
+  /// Create one or more highlights
+  pub fn create(&self, highlights: Vec<Highlight>) -> Result<()> {
+    Ok(())
+  }
+
+  /// Update a single highlight
+  pub fn update(&self, highlight: Highlight) -> Result<()> {
+    Ok(())
+  }
+
+  /// Delete a single highlight
+  pub fn delete(&self, id: i64) -> Result<()> {
+    Ok(())
+  }
 }
 
-fn signed_request(url: &str, token: &str) -> Result<reqwest::blocking::Response> {
+fn signed_request(
+  endpoint: &str,
+  token: &str,
+  method: Method,
+  body: Option<String>,
+) -> Result<reqwest::blocking::Response> {
   let request_client = reqwest::blocking::Client::new();
+  let url = format!("{}/api/v2{}", &get_request_url(), endpoint);
+  let resp;
 
-  let resp = request_client
-    .post(&format!("{}/api/v2{}/", get_request_url(), url))
-    .header("Authorization", format!("Token {}", token))
-    .send()?;
+  match method {
+    Method::GET => {
+      resp = request_client
+        .get(&url)
+        .header(reqwest::header::AUTHORIZATION, format!("Token {}", token))
+        .send()?;
+    },
+    Method::POST => {
+      resp = request_client
+        .post(&url)
+        .header(reqwest::header::AUTHORIZATION, format!("Token {}", token))
+        .body(body.unwrap())
+        .send()?;
+    },
+    _ => panic!("Unsupported request method"),
+  }
 
   Ok(resp)
 }
 
-/// Authenticate using a readwise access token
+/// Authenticate client using a readwise access token
 pub fn auth(access_token: &str) -> Result<Client> {
-  let resp = signed_request("/auth", access_token)?;
+  let resp = signed_request("/auth", access_token, Method::GET, None)?;
 
   if resp.status().is_success() {
     Ok(Client {
       access_token: access_token.to_string(),
     })
   } else {
-    Err(anyhow!("Authentication failed with status code: {}", resp.status()))
+    Err(anyhow!(
+      "Authentication failed with status code: {}",
+      resp.status()
+    ))
   }
 }
 
@@ -188,7 +232,9 @@ mod tests {
   use mockito::mock;
 
   fn client() -> Client {
-    Client { access_token: String::new() }
+    Client {
+      access_token: String::new(),
+    }
   }
 
   fn get_book_as_string() -> String {
@@ -203,7 +249,7 @@ mod tests {
 
   #[test]
   fn test_authenticate() {
-    let _m = mock("POST", "/api/v2/auth/").with_status(204).create();
+    let _m = mock("GET", "/api/v2/auth").with_status(204).create();
 
     let result = auth("token");
     assert!(result.is_ok(), result.err().unwrap().to_string());
@@ -214,7 +260,7 @@ mod tests {
 
   #[test]
   fn test_authenticate_bad_token() {
-    let _m = mock("POST", "/api/v2/auth/").with_status(401).create();
+    let _m = mock("GET", "/api/v2/auth").with_status(401).create();
 
     let result = auth("token");
     assert!(result.is_err(), result.err().unwrap().to_string());
@@ -222,7 +268,7 @@ mod tests {
 
   #[test]
   fn test_books() {
-    let _m = mock("POST", "/api/v2/books/")
+    let _m = mock("GET", "/api/v2/books?page=1")
       .with_status(200)
       .with_body(format!(
         r#" {{ "count": 1, "next": null, "previous": null, "results": [{}] }} "#,
@@ -230,13 +276,13 @@ mod tests {
       ))
       .create();
 
-    let result = client().books();
+    let result = client().books(1);
     assert!(result.is_ok(), result.err().unwrap().to_string());
   }
 
   #[test]
   fn test_highlights() {
-    let _m = mock("POST", "/api/v2/highlights/")
+    let _m = mock("GET", "/api/v2/highlights?page=1")
       .with_status(200)
       .with_body(format!(
         r#" {{ "count": 1, "next": null, "previous": null, "results": [{}] }} "#,
@@ -244,13 +290,13 @@ mod tests {
       ))
       .create();
 
-    let result = client().highlights();
+    let result = client().highlights(1);
     assert!(result.is_ok(), result.err().unwrap().to_string());
   }
 
   #[test]
   fn test_single_book() {
-    let _m = mock("POST", "/api/v2/books/1/")
+    let _m = mock("GET", "/api/v2/books/1")
       .with_status(200)
       .with_body(format!("{}", &get_book_as_string()))
       .create();
@@ -261,7 +307,7 @@ mod tests {
 
   #[test]
   fn test_single_highlight() {
-    let _m = mock("POST", "/api/v2/highlights/1/")
+    let _m = mock("GET", "/api/v2/highlights/1")
       .with_status(200)
       .with_body(format!("{}", &get_highlight_as_string()))
       .create();
