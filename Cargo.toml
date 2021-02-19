@@ -7,11 +7,12 @@ description = "A readwise API wrapper."
 license     = "MIT"
 
 [dependencies]
-anyhow           = "1.0.38"
-http             = "0.2.3"
-reqwest          = { version = "0.11", features = ["json", "blocking"] }
-serde            = { version = "1.0.123", features = ["derive"] }
-serde_json       = "1.0"
+anyhow             = "1.0.38"
+http               = "0.2.3"
+reqwest            = { version = "0.11", features = ["json", "blocking"] }
+serde              = { version = "1.0.123", features = ["derive"] }
+serde_json         = "1.0"
+dotenv             = "0.15.0"
 
 [dev-dependencies]
-mockito          = "0.29.0"
+mockito            = "0.29.0"
