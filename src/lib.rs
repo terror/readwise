@@ -11,14 +11,6 @@ use mockito;
 #[cfg(not(test))]
 const URL: &str = "https://www.readwise.io";
 
-fn get_request_url() -> String {
-  #[cfg(not(test))]
-  let url = format!("{}", URL);
-  #[cfg(test)]
-  let url = format!("{}", mockito::server_url());
-  url
-}
-
 /// The authenticated client instance. The access_token can be
 /// obtained through Readwise.
 pub struct Client {
@@ -42,33 +34,46 @@ pub struct HighlightsResponse {
 }
 
 /// An individual book
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Book {
   id:                  i64,
   title:               String,
   author:              String,
   category:            String,
   num_highlights:      i64,
-  last_highlighted_at: String,
+  last_highlighted_at: Option<String>,
   updated:             String,
   cover_image_url:     String,
   highlights_url:      String,
-  source_url:          String,
+  source_url:          Option<String>,
 }
 
 /// An individual highlight
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Highlight {
   id:             i64,
   text:           String,
   note:           String,
   location:       i64,
   location_type:  String,
-  highlighted_at: String,
-  url:            String,
+  highlighted_at: Option<String>,
+  url:            Option<String>,
   color:          String,
   updated:        String,
   books_id:       i64,
+}
+
+fn get_request_url() -> String {
+  #[cfg(not(test))]
+  let url = format!("{}", URL);
+  #[cfg(test)]
+  let url = format!("{}", mockito::server_url());
+  url
+}
+
+fn get_next(n: String) -> String {
+  let v: Vec<&str> = n.split("/").collect();
+  v[v.len() - 1].to_string()
 }
 
 impl Client {
@@ -89,13 +94,12 @@ impl Client {
         }
 
         if let Some(n) = data.next {
-          let vec: Vec<&str> = n.split("/").collect();
-          next = vec[vec.len() - 1].to_string();
+          next = get_next(n)
         } else {
           break;
         }
       } else {
-        Err(anyhow!("Failed to fetch books."))?
+        Err(anyhow!("Failed to fetch books with status code: {}.", resp.status()))?
       }
     }
     Ok(ret)
@@ -118,21 +122,20 @@ impl Client {
         }
 
         if let Some(n) = data.next {
-          let vec: Vec<&str> = n.split("/").collect();
-          next = vec[vec.len() - 1].to_string();
+          next = get_next(n);
         } else {
           break;
         }
       } else {
-        Err(anyhow!("Failed to fetch highlights."))?
+        Err(anyhow!("Failed to fetch highlights with status code: {}.", resp.status()))?
       }
     }
     Ok(ret)
   }
 
   /// Fetch a single book by ID
-  pub fn book(&self, id: &str) -> Result<Book> {
-    let resp = signed_request(&format!("/book/{}", id), &self.access_token)?;
+  pub fn book(&self, id: i64) -> Result<Book> {
+    let resp = signed_request(&format!("/books/{}", id), &self.access_token)?;
     if resp.status().is_success() {
       let response_text = resp.text()?;
       let data: Book = serde_json::from_str(&response_text)?;
@@ -143,7 +146,7 @@ impl Client {
   }
 
   /// Fetch a single highlight by ID
-  pub fn highlight(&self, id: &str) -> Result<Highlight> {
+  pub fn highlight(&self, id: i64) -> Result<Highlight> {
     let resp = signed_request(&format!("/highlights/{}", id), &self.access_token)?;
     if resp.status().is_success() {
       let response_text = resp.text()?;
@@ -157,7 +160,7 @@ impl Client {
 
 fn signed_request(url: &str, token: &str) -> Result<reqwest::blocking::Response> {
   let request_client = reqwest::blocking::Client::new();
-  println!("{}", get_request_url());
+
   let resp = request_client
     .post(&format!("{}/api/v2{}/", get_request_url(), url))
     .header("Authorization", format!("Token {}", token))
@@ -175,10 +178,7 @@ pub fn auth(access_token: &str) -> Result<Client> {
       access_token: access_token.to_string(),
     })
   } else {
-    Err(anyhow!(
-      "Authentication failed with status code: {}",
-      resp.status()
-    ))
+    Err(anyhow!("Authentication failed with status code: {}", resp.status()))
   }
 }
 
@@ -188,9 +188,17 @@ mod tests {
   use mockito::mock;
 
   fn client() -> Client {
-    Client {
-      access_token: String::new(),
-    }
+    Client { access_token: String::new() }
+  }
+
+  fn get_book_as_string() -> String {
+    let book = Book::default();
+    serde_json::to_string(&book).unwrap()
+  }
+
+  fn get_highlight_as_string() -> String {
+    let highlight = Highlight::default();
+    serde_json::to_string(&highlight).unwrap()
   }
 
   #[test]
@@ -210,5 +218,55 @@ mod tests {
 
     let result = auth("token");
     assert!(result.is_err(), result.err().unwrap().to_string());
+  }
+
+  #[test]
+  fn test_books() {
+    let _m = mock("POST", "/api/v2/books/")
+      .with_status(200)
+      .with_body(format!(
+        r#" {{ "count": 1, "next": null, "previous": null, "results": [{}] }} "#,
+        &get_book_as_string()
+      ))
+      .create();
+
+    let result = client().books();
+    assert!(result.is_ok(), result.err().unwrap().to_string());
+  }
+
+  #[test]
+  fn test_highlights() {
+    let _m = mock("POST", "/api/v2/highlights/")
+      .with_status(200)
+      .with_body(format!(
+        r#" {{ "count": 1, "next": null, "previous": null, "results": [{}] }} "#,
+        &get_highlight_as_string()
+      ))
+      .create();
+
+    let result = client().highlights();
+    assert!(result.is_ok(), result.err().unwrap().to_string());
+  }
+
+  #[test]
+  fn test_single_book() {
+    let _m = mock("POST", "/api/v2/books/1/")
+      .with_status(200)
+      .with_body(format!("{}", &get_book_as_string()))
+      .create();
+
+    let result = client().book(1);
+    assert!(result.is_ok(), result.err().unwrap().to_string());
+  }
+
+  #[test]
+  fn test_single_highlight() {
+    let _m = mock("POST", "/api/v2/highlights/1/")
+      .with_status(200)
+      .with_body(format!("{}", &get_highlight_as_string()))
+      .create();
+
+    let result = client().highlight(1);
+    assert!(result.is_ok(), result.err().unwrap().to_string());
   }
 }
