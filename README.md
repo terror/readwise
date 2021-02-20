@@ -1,5 +1,8 @@
 ## `Readwise`
 
+[![crates.io](https://shields.io/crates/v/readwise.svg)](https://crates.io/crates/readwise)
+![Build and Test](https://github.com/terror/readwise/actions/workflows/rust.yml/badge.svg)
+
 A rust wrapper for the Readwise API.
 
 ## Installation

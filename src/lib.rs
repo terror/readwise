@@ -7,7 +7,7 @@
 /// ! ```
 /// ! readwise = "1.0.0"
 /// ! ```
-/// ! ## Usage
+/// ! ## Example
 /// ! ```
 /// !use readwise::auth;
 /// !
