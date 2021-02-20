@@ -1,11 +1,67 @@
 /// ! Rust wrapper for the Readwise public API. The official readwise public API
 /// ! documentation can be found [here](https://readwise.io/api_deets).
-/// This wrapper supports retrieving Book information and CRUD for Highlights.
+/// ! This wrapper supports retrieving Book information and CRUD for Highlights.
+/// !
+/// ! ## Installation
+/// ! Simply add readwise to your Cargo.toml
+/// ! ```
+/// ! readwise = "1.0.0"
+/// ! ```
+/// ! ## Usage
+/// ! ```
+/// !use readwise::auth;
+/// !
+/// !extern crate dotenv;
+/// !
+/// !use dotenv::dotenv;
+/// !use std::{collections::HashMap, env};
+/// !
+/// !fn main() -> Result<(), anyhow::Error> {
+/// !  dotenv().ok();
+/// !
+/// !  let client = auth(&env::var("ACCESS_TOKEN").unwrap()).unwrap();
+/// !
+/// !  // Fetch all books on page 1
+/// !  for book in client.books(1).unwrap() {
+/// !    println!("{}", book.title);
+/// !  }
+/// !
+/// !  // Fetch all highlights on page 1
+/// !  for highlight in client.highlights(1).unwrap() {
+/// !    println!("{}", highlight.id);
+/// !  }
+/// !
+/// !  // Create highlight(s)
+/// !  let mut highlights = Vec::new();
+/// !  let mut highlight = HashMap::new();
+/// !
+/// !  highlight.insert("text", "hello world!");
+/// !  highlights.push(highlight);
+/// !
+/// !  let result = client.create(highlights)?;
+/// !
+/// !  for highlight in result {
+/// !    println!("{}", highlight.text);
+/// !  }
+/// !
+/// !  // Update a highlight by ID
+/// !  let mut fields = HashMap::new();
+/// !  fields.insert("text", "hello, world!");
+/// !
+/// !  let _result = client.update(138105649, fields)?;
+/// !
+/// !  // Delete a highlight by ID
+/// !  client.delete(136887156)?;
+/// !
+/// !  Ok(())
+/// !}
+/// ! ```
 use anyhow::{anyhow, Result};
 use http::Method;
-use reqwest;
+use reqwest::header;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::collections::HashMap;
 
 #[cfg(test)]
 use mockito;
@@ -35,12 +91,28 @@ pub struct HighlightsResponse {
   results:  Vec<Highlight>,
 }
 
+/// A reponse from creating new highlights
+#[derive(Serialize, Deserialize, Default)]
+pub struct HighlightCreateResponse {
+  id:                  i64,
+  title:               String,
+  auhtor:              Option<String>,
+  category:            String,
+  num_highlights:      i64,
+  last_highlighted_at: Option<String>,
+  updated:             String,
+  cover_image_url:     String,
+  highlights_url:      String,
+  source_url:          Option<String>,
+  modified_highlights: Vec<i64>,
+}
+
 /// An individual book
 #[derive(Serialize, Deserialize, Default)]
 pub struct Book {
   pub id:                  i64,
   pub title:               String,
-  pub author:              String,
+  pub author:              Option<String>,
   pub category:            String,
   pub num_highlights:      i64,
   pub last_highlighted_at: Option<String>,
@@ -138,6 +210,7 @@ impl Client {
       Method::GET,
       None,
     )?;
+
     if resp.status().is_success() {
       let response_text = resp.text()?;
       let data: Book = serde_json::from_str(&response_text)?;
@@ -155,6 +228,7 @@ impl Client {
       Method::GET,
       None,
     )?;
+
     if resp.status().is_success() {
       let response_text = resp.text()?;
       let data: Highlight = serde_json::from_str(&response_text)?;
@@ -164,19 +238,84 @@ impl Client {
     }
   }
 
-  /// Create one or more highlights
-  pub fn create(&self, highlights: Vec<Highlight>) -> Result<()> {
-    Ok(())
+  /// Create one or more highlights and return them
+  pub fn create(&self, highlights: Vec<HashMap<&str, &str>>) -> Result<Vec<Highlight>> {
+    let mut body = HashMap::new();
+    body.insert("highlights", highlights);
+
+    let resp = signed_request(
+      &format!("/highlights"),
+      &self.access_token,
+      Method::POST,
+      Some(body),
+    )?;
+
+    if resp.status().is_success() {
+      let response_text = resp.text()?;
+
+      let highlight_information: Vec<HighlightCreateResponse> =
+        serde_json::from_str(&response_text)?;
+
+      // build the return vec
+      let mut created_highlights: Vec<Highlight> = Vec::new();
+
+      for response_item in highlight_information {
+        // fetch individual highlights
+        for id in response_item.modified_highlights {
+          let highlight = self.highlight(id)?;
+          created_highlights.push(highlight);
+        }
+      }
+
+      Ok(created_highlights)
+    } else {
+      Err(anyhow!(
+        "Failed to create new highlights: {}",
+        resp.status()
+      ))
+    }
   }
 
-  /// Update a single highlight
-  pub fn update(&self, highlight: Highlight) -> Result<()> {
-    Ok(())
+  /// Update a single highlight and return it
+  pub fn update(&self, id: i64, body: HashMap<&str, &str>) -> Result<Highlight> {
+    let mut container = HashMap::new();
+
+    let mut highlights = Vec::new();
+
+    highlights.push(body);
+
+    container.insert("body", highlights);
+
+    let resp = signed_request(
+      &format!("/highlights/{}", id),
+      &self.access_token,
+      Method::PATCH,
+      Some(container),
+    )?;
+
+    if resp.status().is_success() {
+      let response_text = &resp.text()?;
+      let updated_highlight: Highlight = serde_json::from_str(&response_text)?;
+      Ok(updated_highlight)
+    } else {
+      Err(anyhow!("Failed to update highlight with id: {}", id))
+    }
   }
 
   /// Delete a single highlight
   pub fn delete(&self, id: i64) -> Result<()> {
-    Ok(())
+    let resp = signed_request(
+      &format!("/highlights/{}", id),
+      &self.access_token,
+      Method::DELETE,
+      None,
+    )?;
+
+    if resp.status().is_success() {
+      Ok(())
+    } else {
+      Err(anyhow!("Failed to delete highlight with id: {}", id))
+    }
   }
 }
 
@@ -184,30 +323,39 @@ fn signed_request(
   endpoint: &str,
   token: &str,
   method: Method,
-  body: Option<String>,
+  body: Option<HashMap<&str, Vec<HashMap<&str, &str>>>>,
 ) -> Result<reqwest::blocking::Response> {
-  let request_client = reqwest::blocking::Client::new();
   let url = format!("{}/api/v2{}", &get_request_url(), endpoint);
+
+  let mut headers = header::HeaderMap::new();
+  headers.insert(
+    header::AUTHORIZATION,
+    header::HeaderValue::from_str(&format!("Token {}", token)).unwrap(),
+  );
+
+  let request_client = reqwest::blocking::Client::builder()
+    .default_headers(headers)
+    .build()?;
+
   let resp;
 
   match method {
     Method::GET => {
-      resp = request_client
-        .get(&url)
-        .header(reqwest::header::AUTHORIZATION, format!("Token {}", token))
-        .send()?;
+      resp = request_client.get(&url);
     },
     Method::POST => {
-      resp = request_client
-        .post(&url)
-        .header(reqwest::header::AUTHORIZATION, format!("Token {}", token))
-        .body(body.unwrap())
-        .send()?;
+      resp = request_client.post(&url).json(&body.unwrap());
+    },
+    Method::PATCH => {
+      resp = request_client.patch(&url).json(&body.unwrap()["body"][0]);
+    },
+    Method::DELETE => {
+      resp = request_client.delete(&url);
     },
     _ => panic!("Unsupported request method"),
   }
 
-  Ok(resp)
+  Ok(resp.send()?)
 }
 
 /// Authenticate client using a readwise access token
@@ -313,6 +461,52 @@ mod tests {
       .create();
 
     let result = client().highlight(1);
+    assert!(result.is_ok(), result.err().unwrap().to_string());
+  }
+
+  #[test]
+  fn test_create_highlights() {
+    let _m = mock("POST", "/api/v2/highlights")
+      .with_status(200)
+      .with_body(
+        r#"
+        [ { "id": 1,
+          "title": "Quotes",
+          "author": null,
+          "category": "books",
+          "num_highlights": 5,
+          "last_highlight_at": "2021-02-20T16:28:53.900414Z",
+          "updated": "2021-02-20T16:35:41.793746Z",
+          "cover_image_url": "https://readwise-assets.s3.amazonaws.com/static/images/default-book-icon-7.09749d3efd49.png",
+          "highlights_url": "https://readwise.io/bookreview/7843339",
+          "source_url": null,
+          "modified_highlights": [] }
+        ]"#,
+      )
+      .create();
+
+    let result = client().create(Vec::new());
+    assert!(result.is_ok(), result.err().unwrap().to_string());
+  }
+
+  #[test]
+  fn test_update_highlight() {
+    let _m = mock("PATCH", "/api/v2/highlights/0")
+      .with_status(200)
+      .with_body(format!("{}", &get_highlight_as_string()))
+      .create();
+
+    let result = client().update(0, HashMap::new());
+    assert!(result.is_ok(), result.err().unwrap().to_string());
+  }
+
+  #[test]
+  fn test_delete_highlight() {
+    let _m = mock("DELETE", "/api/v2/highlights/1")
+      .with_status(200)
+      .create();
+
+    let result = client().delete(1);
     assert!(result.is_ok(), result.err().unwrap().to_string());
   }
 }
