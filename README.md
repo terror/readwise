@@ -10,7 +10,7 @@ A rust wrapper for the Readwise API.
 Simply add readwise to your Cargo.toml file:
 
 ```
-readwise = "0.1.0"
+readwise = "0.2.0"
 ```
 
 ## Example

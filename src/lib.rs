@@ -1,61 +1,59 @@
-/// ! Rust wrapper for the Readwise public API. The official readwise public API
-/// ! documentation can be found [here](https://readwise.io/api_deets).
-/// ! This wrapper supports retrieving Book information and CRUD for Highlights.
-/// !
-/// ! ## Installation
-/// ! Simply add readwise to your Cargo.toml
-/// ! ```
-/// ! readwise = "1.0.0"
-/// ! ```
-/// ! ## Example
-/// ! ```
-/// !use readwise::auth;
-/// !
-/// !extern crate dotenv;
-/// !
-/// !use dotenv::dotenv;
-/// !use std::{collections::HashMap, env};
-/// !
-/// !fn main() -> Result<(), anyhow::Error> {
-/// !  dotenv().ok();
-/// !
-/// !  let client = auth(&env::var("ACCESS_TOKEN").unwrap()).unwrap();
-/// !
-/// !  // Fetch all books on page 1
-/// !  for book in client.books(1).unwrap() {
-/// !    println!("{}", book.title);
-/// !  }
-/// !
-/// !  // Fetch all highlights on page 1
-/// !  for highlight in client.highlights(1).unwrap() {
-/// !    println!("{}", highlight.id);
-/// !  }
-/// !
-/// !  // Create highlight(s)
-/// !  let mut highlights = Vec::new();
-/// !  let mut highlight = HashMap::new();
-/// !
-/// !  highlight.insert("text", "hello world!");
-/// !  highlights.push(highlight);
-/// !
-/// !  let result = client.create(highlights)?;
-/// !
-/// !  for highlight in result {
-/// !    println!("{}", highlight.text);
-/// !  }
-/// !
-/// !  // Update a highlight by ID
-/// !  let mut fields = HashMap::new();
-/// !  fields.insert("text", "hello, world!");
-/// !
-/// !  let _result = client.update(138105649, fields)?;
-/// !
-/// !  // Delete a highlight by ID
-/// !  client.delete(136887156)?;
-/// !
-/// !  Ok(())
-/// !}
-/// ! ```
+//! Rust wrapper for the Readwise public API. The official readwise public API
+//! documentation can be found [here](https://readwise.io/api_deets).
+//! This wrapper supports retrieving Book information and CRUD for Highlights.
+//!
+//! ## Installation
+//! Simply add `readwise = "0.1.0"` to your Cargo.toml
+//!
+//! ## Example
+//! ```no_run
+//! use readwise::auth;
+//!
+//! extern crate dotenv;
+//!
+//! use dotenv::dotenv;
+//! use std::{collections::HashMap, env};
+//!
+//! fn main() -> Result<(), anyhow::Error> {
+//!   dotenv().ok();
+//!
+//!   let client = auth(&env::var("ACCESS_TOKEN").unwrap()).unwrap();
+//!
+//!   // Fetch all books on page 1
+//!   for book in client.books(1).unwrap() {
+//!     println!("{}", book.title);
+//!   }
+//!
+//!   // Fetch all highlights on page 1
+//!   for highlight in client.highlights(1).unwrap() {
+//!     println!("{}", highlight.id);
+//!   }
+//!
+//!   // Create highlight(s)
+//!   let mut highlights = Vec::new();
+//!   let mut highlight = HashMap::new();
+//!
+//!   highlight.insert("text", "hello world!");
+//!   highlights.push(highlight);
+//!
+//!   let result = client.create(highlights)?;
+//!
+//!   for highlight in result {
+//!     println!("{}", highlight.text);
+//!   }
+//!
+//!   // Update a highlight by ID
+//!   let mut fields = HashMap::new();
+//!   fields.insert("text", "hello, world!");
+//!
+//!   let _result = client.update(138105649, fields)?;
+//!
+//!   // Delete a highlight by ID
+//!   client.delete(136887156)?;
+//!
+//!   Ok(())
+//! }
+//! ```
 use anyhow::{anyhow, Result};
 use http::Method;
 use reqwest::header;
@@ -76,7 +74,7 @@ pub struct Client {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct BooksResponse {
+struct BooksResponse {
   count:    i64,
   next:     Option<String>,
   previous: Option<String>,
@@ -84,7 +82,7 @@ pub struct BooksResponse {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct HighlightsResponse {
+struct HighlightsResponse {
   count:    i64,
   next:     Option<String>,
   previous: Option<String>,
@@ -93,7 +91,7 @@ pub struct HighlightsResponse {
 
 /// A reponse from creating new highlights
 #[derive(Serialize, Deserialize, Default)]
-pub struct HighlightCreateResponse {
+struct HighlightCreateResponse {
   id:                  i64,
   title:               String,
   auhtor:              Option<String>,
