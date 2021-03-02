@@ -3,7 +3,7 @@
 //! This wrapper supports retrieving Book information and CRUD for Highlights.
 //!
 //! ## Installation
-//! Simply add `readwise = "0.1.0"` to your Cargo.toml
+//! Simply add `readwise = "0.3.0"` to your Cargo.toml
 //!
 //! ## Example
 //! ```no_run

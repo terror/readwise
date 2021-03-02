@@ -1,6 +1,6 @@
 [package]
 name          = "readwise"
-version       = "0.2.0"
+version       = "0.3.0"
 authors       = ["Liam liam@scalzulli.com"]
 edition       = "2018"
 description   = "A rust wrapper for the Readwise API."
