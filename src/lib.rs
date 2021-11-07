@@ -31,22 +31,16 @@
 //!   }
 //!
 //!   // Create highlight(s)
-//!   let mut highlights = Vec::new();
-//!   let mut highlight = HashMap::new();
+//!   let mut new_highlight = HashMap::new();
+//!   new_highlight.insert("text", "hello world!");
 //!
-//!   highlight.insert("text", "hello world!");
-//!   highlights.push(highlight);
-//!
-//!   let result = client.create_highlights(highlights).unwrap();
-//!
-//!   for highlight in result {
+//!   for highlight in client.create_highlights(vec![new_highlight]).unwrap() {
 //!     println!("{}", highlight.text);
 //!   }
 //!
 //!   // Update a highlight by ID
 //!   let mut fields = HashMap::new();
 //!   fields.insert("text", "hello, world!");
-//!
 //!   client.update_highlight(138105649, fields).unwrap();
 //!
 //!   // Delete a highlight by ID

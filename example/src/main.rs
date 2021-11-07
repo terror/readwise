@@ -1,30 +1,3 @@
-## Readwise
-
-<p>
-  A rust wrapper for the <a href="https://readwise.io/" target="_blank">Readwise</a> API.
-  <br/><br/>
-  <a href="https://crates.io/crates/readwise" target="_blank">
-    <img src="https://shields.io/crates/v/readwise.svg"/>
-  </a>
-  <a href="https://github.com/terror/readwise/blob/master/.github/workflows/rust.yml" target="_blank">
-    <img src="https://github.com/terror/readwise/actions/workflows/rust.yml/badge.svg"/>
-  </a>
-</p>
-
-
-### Installation
-
-Simply add readwise to your Cargo.toml file:
-
-```
-readwise = "0.3.1"
-```
-
-### Example
-
-Here is a small example showcasing the main functionality of the library.
-
-```rust
 use readwise::auth;
 
 extern crate dotenv;
@@ -63,4 +36,3 @@ fn main() {
   // Delete a highlight by ID
   client.delete_highlight(136887156).unwrap();
 }
-```
