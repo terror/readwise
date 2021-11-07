@@ -1,19 +1,28 @@
-## `Readwise`
+## Readwise
 
-[![crates.io](https://shields.io/crates/v/readwise.svg)](https://crates.io/crates/readwise)
-![Build and Test](https://github.com/terror/readwise/actions/workflows/rust.yml/badge.svg)
+<p>
+  A rust wrapper for the <a href="https://readwise.io/" target="_blank">Readwise</a> API.
+  <br/><br/>
+  <a href="https://crates.io/crates/readwise" target="_blank">
+    <img src="https://shields.io/crates/v/readwise.svg"/>
+  </a>
+  <a href="https://github.com/terror/readwise/blob/master/.github/workflows/rust.yml" target="_blank">
+    <img src="https://github.com/terror/readwise/actions/workflows/rust.yml/badge.svg"/>
+  </a>
+</p>
 
-A rust wrapper for the Readwise API.
 
-## Installation
+### Installation
 
 Simply add readwise to your Cargo.toml file:
 
 ```
-readwise = "0.3.0"
+readwise = "0.3.1"
 ```
 
-## Example
+### Example
+
+Here is a small example showcasing the main functionality of the library.
 
 ```rust
 use readwise::auth;
@@ -23,43 +32,35 @@ extern crate dotenv;
 use dotenv::dotenv;
 use std::{collections::HashMap, env};
 
-fn main() -> Result<(), anyhow::Error> {
+fn main() {
   dotenv().ok();
 
   let client = auth(&env::var("ACCESS_TOKEN").unwrap()).unwrap();
 
   // Fetch all books on page 1
-  for book in client.books(1).unwrap() {
+  for book in client.get_books(1).unwrap() {
     println!("{}", book.title);
   }
 
   // Fetch all highlights on page 1
-  for highlight in client.highlights(1).unwrap() {
+  for highlight in client.get_highlights(1).unwrap() {
     println!("{}", highlight.id);
   }
 
   // Create highlight(s)
-  let mut highlights = Vec::new();
   let mut highlight = HashMap::new();
-
   highlight.insert("text", "hello world!");
-  highlights.push(highlight);
 
-  let result = client.create(highlights)?;
-
-  for highlight in result {
+  for highlight in client.create_highlights(vec![highlights]).unwrap();
     println!("{}", highlight.text);
   }
 
   // Update a highlight by ID
   let mut fields = HashMap::new();
   fields.insert("text", "hello, world!");
-
-  let _result = client.update(138105649, fields)?;
+  client.update_highlight(138105649, fields).unwrap();
 
   // Delete a highlight by ID
-  client.delete(136887156)?;
-
-  Ok(())
+  client.delete_highlight(136887156).unwrap();
 }
 ```
