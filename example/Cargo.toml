@@ -1,0 +1,9 @@
+[package]
+name    = "example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+dotenv   = "0.15.0"
+readwise = "0.3.1"
