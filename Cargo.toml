@@ -7,7 +7,7 @@ description = "A rust wrapper for the Readwise API."
 repository = "https://github.com/terror/readwise"
 documentation = "https://docs.rs/readwise"
 homepage = "https://github.com/terror/readwise"
-license = "CC0"
+license = "CC0-1.0"
 
 [dependencies]
 anyhow = "1.0.65"
