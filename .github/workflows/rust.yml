@@ -35,13 +35,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # An issue with BSD Tar causes sporadic failures on macOS.
-    # c.f https://github.com/actions/cache/issues/403
     - name: Install GNU Tar
       if: matrix.os == 'macos-latest'
       run: |
         brew install gnu-tar
         echo /usr/local/opt/gnu-tar/libexec/gnubin > $GITHUB_PATH
+
     - name: Cache
       uses: actions/cache@v2
       with:
@@ -62,6 +61,7 @@ jobs:
     - name: Install Clippy
       run: |
         rustup component add clippy
+
     - name: Install just
       run: |
         if ! which just; then
@@ -71,11 +71,13 @@ jobs:
           echo '1.51.0' > rust-toolchain
           cargo install --path .
         fi
+
     - name: Info
       run: |
         rustup --version
         cargo --version
         cargo clippy --version
+
     - name: Ci
       run: just ci
 

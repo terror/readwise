@@ -1,4 +1,4 @@
-pub fn request_url() -> String {
+pub(crate) fn request_url() -> String {
   #[cfg(not(test))]
   let url = "https://readwise.io".to_string();
   #[cfg(test)]
