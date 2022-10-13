@@ -17,7 +17,7 @@
 Simply add readwise to your Cargo.toml file:
 
 ```
-readwise = "0.3.1"
+readwise = "0.4.0"
 ```
 
 ### Example
@@ -25,25 +25,24 @@ readwise = "0.3.1"
 Here is a small example showcasing the main functionality of the library.
 
 ```rust
-use readwise::auth;
-
-extern crate dotenv;
-
-use dotenv::dotenv;
-use std::{collections::HashMap, env};
+use {
+  dotenv::dotenv,
+  readwise::client::Client,
+  std::{collections::HashMap, env},
+};
 
 fn main() {
   dotenv().ok();
 
-  let client = auth(&env::var("ACCESS_TOKEN").unwrap()).unwrap();
+  let client = Client::new(&env::var("ACCESS_TOKEN").unwrap()).unwrap();
 
   // Fetch all books on page 1
-  for book in client.get_books(1).unwrap() {
+  for book in client.books(1).unwrap() {
     println!("{}", book.title);
   }
 
   // Fetch all highlights on page 1
-  for highlight in client.get_highlights(1).unwrap() {
+  for highlight in client.highlights(1).unwrap() {
     println!("{}", highlight.id);
   }
 

@@ -3,11 +3,14 @@ ci: build test clippy fmt-check
 build:
 	cargo build
 
-test:
-	cargo test
-
 clippy:
   cargo clippy --all-targets --all-features
+
+doc:
+  cargo doc --open
+
+fmt:
+	cargo +nightly fmt --all
 
 fmt-check:
   cargo +nightly fmt --all -- --check
@@ -16,11 +19,8 @@ fmt-check:
 run *args:
 	cargo run -- --{{args}}
 
-fmt:
-	cargo +nightly fmt
-
-check:
- cargo check
+test:
+	cargo test
 
 watch +COMMAND='test':
 	cargo watch --clear --exec "{{COMMAND}}"

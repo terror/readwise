@@ -1,34 +1,22 @@
-// std
-pub use std::collections::HashMap;
+pub(crate) use std::collections::HashMap;
 
-// dependencies
-pub use {
+pub(crate) use {
   http::Method,
   reqwest::{
     blocking::{self, Response},
     header, StatusCode,
   },
   serde::{Deserialize, Serialize},
-  serde_json,
-  snafu::{ResultExt, Snafu},
+  snafu::Snafu,
 };
 
-// modules
-pub(crate) use crate::error;
+pub(crate) use crate::{error, url::request_url};
 
-// functions
-pub use crate::{auth::auth, request::signed_request, url::request_url};
-
-// structs and enums
-pub use crate::{
-  client::Client,
+pub(crate) use crate::{
   error::Error,
-  model::{Book, BooksResponse, Highlight, HighlightCreateResponse, HighlightsResponse},
+  model::{
+    Book, BooksResponse, Highlight, HighlightCreateResponse, HighlightsResponse,
+  },
 };
 
-// type aliases
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-// test dependencies
-#[cfg(test)]
-pub use mockito;
+pub(crate) type Result<T = (), E = Error> = std::result::Result<T, E>;
